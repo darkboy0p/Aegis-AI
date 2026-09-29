@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aegis AI Control Center</title>
+<style>:root{--bg:#0a0e17;--p:#111827;--t:#e5e7eb;--m:#94a3b8;--a:#38bdf8;--ok:#34d399;--w:#fbbf24;--bad:#f87171}
+@media(prefers-color-scheme:light){:root{--bg:#f1f5f9;--p:#fff;--t:#0f172a;--m:#475569;--a:#0369a1}}
+body{margin:0;font:14px system-ui,sans-serif;background:var(--bg);color:var(--t)}header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #334155}
+.demo{background:var(--w);color:#000;padding:3px 10px;border-radius:99px;font-weight:700;letter-spacing:.08em}
+nav{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px}nav button{background:var(--p);color:var(--t);border:1px solid #334155;border-radius:8px;padding:6px 12px;cursor:pointer}nav button.on{border-color:var(--a);color:var(--a)}
+main{padding:0 20px 30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.card{background:var(--p);border:1px solid #334155;border-radius:12px;padding:14px}
+.card h3{margin:0 0 6px;color:var(--m);font-size:12px;text-transform:uppercase}.big{font-size:22px}.wide{grid-column:1/-1}li{margin:4px 0;color:var(--m)}
+.ONLINE{color:var(--ok)}.DEGRADED{color:var(--w)}.OFFLINE,.UNKNOWN{color:var(--bad)}</style></head><body>
+<header><b>AEGIS AI · Control Center</b><span class="demo">DEMO MODE — sample data, no real Discord actions</span></header>
+<nav id="nav"></nav><main id="v"></main>
+<script>
+const DEMO=true; // Demo data is generated locally. This page holds no tokens and makes no network calls.
+const S=['Overview','Security','Moderation','Members','Roles','Channels','Tickets','Tasks','Voice','AI','Memory','Analytics','Audit','Learning','Evolution','System','Settings'];
+const sample={Overview:[['Server health','96%'],['Security status','Normal'],['Active incidents','0'],['Active tasks','2'],['Open tickets','7'],['Autonomy','Level 2 (sample)']],
+Security:[['Threats (24h)','3 (sample)'],['Spam detections','12 (sample)'],['Emergency mode','Off']],Tickets:[['Support','4'],['Reports','2'],['Ban appeals','1']],Tasks:[['Running','2'],['Queued','1'],['Failed (24h)','0']]};
+const health=[['Discord','UNKNOWN'],['Firebase','UNKNOWN'],['AI','UNKNOWN'],['Database','ONLINE (in-memory demo)'],['Task Engine','ONLINE (demo)'],['Voice','UNKNOWN']];
+const feed=['Security monitor observed a sample message burst.','Risk analysis completed: low confidence, no action.','Daily report generated (sample).'];
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function show(s){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.textContent===s));
+let h=(sample[s]||[['Section',s],['Status','No sample data yet in demo']]).map(([k,v])=>`<div class="card"><h3>${esc(k)}</h3><div class="big">${esc(v)}</div></div>`).join('');
+if(s==='Overview'||s==='System')h+=`<div class="card wide"><h3>Component health (no live checks in demo mode)</h3>${health.map(([k,v])=>`<div>${esc(k)}: <b class="${v.split(' ')[0]}">${esc(v)}</b></div>`).join('')}</div>`;
+if(s==='Overview')h+=`<div class="card wide"><h3>Activity stream (sample)</h3><ul>${feed.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div>`;
+document.getElementById('v').innerHTML=h}
+document.getElementById('nav').innerHTML=S.map(s=>`<button>${s}</button>`).join('');
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.textContent));show('Overview');
+</script></body></html>

@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    // Clients may only read data for guilds where they hold a membership doc written by the server-side bot.
+    function member(g) { return request.auth != null && exists(/databases/$(db)/documents/guilds/$(g)/guildRoles/$(request.auth.uid)); }
+    match /guilds/{g}/{col}/{doc} {
+      allow read: if member(g) && col != 'guildAudit' || member(g) && get(/databases/$(db)/documents/guilds/$(g)/guildRoles/$(request.auth.uid)).data.admin == true;
+      allow write: if false; // only the bot (Admin SDK) writes
+    }
+    match /system/{doc} { allow read, write: if false; }
+    match /{path=**} { allow read, write: if false; }
+  }
+}
