@@ -7,21 +7,36 @@ nav{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px}nav button{background:
 main{padding:0 20px 30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.card{background:var(--p);border:1px solid #334155;border-radius:12px;padding:14px}
 .card h3{margin:0 0 6px;color:var(--m);font-size:12px;text-transform:uppercase}.big{font-size:22px}.wide{grid-column:1/-1}li{margin:4px 0;color:var(--m)}
 .ONLINE{color:var(--ok)}.DEGRADED{color:var(--w)}.OFFLINE,.UNKNOWN{color:var(--bad)}</style></head><body>
-<header><b>AEGIS AI · Control Center</b><span class="demo">DEMO MODE — sample data, no real Discord actions</span></header>
+<header><b>AEGIS AI · Control Center</b><span id="badge" class="demo">DEMO MODE — sample data, no real Discord actions</span></header>
+<div style="padding:10px 20px"><input id="url" placeholder="Bot API URL, e.g. http://localhost:8787" size="34"> <input id="tok" type="password" placeholder="Dashboard API token" size="22"> <input id="gid" placeholder="Guild ID (for live tables)" size="22"> <button id="go">Connect live</button> <button id="demo">Demo mode</button> <span id="msg" style="color:var(--m)"></span></div>
 <nav id="nav"></nav><main id="v"></main>
 <script>
-const DEMO=true; // Demo data is generated locally. This page holds no tokens and makes no network calls.
+let DEMO=true,LIVE=null; // Demo: local sample data, no network calls. Live: the token lives only in this tab's memory, never in storage or the URL.
 const S=['Overview','Security','Moderation','Members','Roles','Channels','Tickets','Tasks','Voice','AI','Memory','Analytics','Audit','Learning','Evolution','System','Settings'];
 const sample={Overview:[['Server health','96%'],['Security status','Normal'],['Active incidents','0'],['Active tasks','2'],['Open tickets','7'],['Autonomy','Level 2 (sample)']],
 Security:[['Threats (24h)','3 (sample)'],['Spam detections','12 (sample)'],['Emergency mode','Off']],Tickets:[['Support','4'],['Reports','2'],['Ban appeals','1']],Tasks:[['Running','2'],['Queued','1'],['Failed (24h)','0']]};
-const health=[['Discord','UNKNOWN'],['Firebase','UNKNOWN'],['AI','UNKNOWN'],['Database','ONLINE (in-memory demo)'],['Task Engine','ONLINE (demo)'],['Voice','UNKNOWN']];
+let health=[['Discord','UNKNOWN'],['Firebase','UNKNOWN'],['AI','UNKNOWN'],['Database','ONLINE (in-memory demo)'],['Task Engine','ONLINE (demo)'],['Voice','UNKNOWN']];
 const feed=['Security monitor observed a sample message burst.','Risk analysis completed: low confidence, no action.','Daily report generated (sample).'];
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-function show(s){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.textContent===s));
+function show(s){if(!DEMO&&s==='Overview'&&LIVE){const l=LIVE;sample.Overview=[['Mode','LIVE'],['Guilds',l.guilds],['Autonomy','Level '+l.autonomy],['Uptime (s)',l.uptimeSec],['Discord ping (ms)',l.discordPingMs],['AI provider',l.aiProvider]];health=Object.entries(l.components)}
+document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.textContent===s));
+if(!DEMO&&(KIND[s]||s==='Audit')){live(s);return}
 let h=(sample[s]||[['Section',s],['Status','No sample data yet in demo']]).map(([k,v])=>`<div class="card"><h3>${esc(k)}</h3><div class="big">${esc(v)}</div></div>`).join('');
 if(s==='Overview'||s==='System')h+=`<div class="card wide"><h3>Component health (no live checks in demo mode)</h3>${health.map(([k,v])=>`<div>${esc(k)}: <b class="${v.split(' ')[0]}">${esc(v)}</b></div>`).join('')}</div>`;
-if(s==='Overview')h+=`<div class="card wide"><h3>Activity stream (sample)</h3><ul>${feed.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div>`;
+if(s==='Overview'&&DEMO)h+=`<div class="card wide"><h3>Activity stream (sample)</h3><ul>${feed.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div>`;
+if(!DEMO&&!sample[s])h=`<div class="card wide"><h3>${esc(s)}</h3>Not wired to the live API yet.</div>`;
 document.getElementById('v').innerHTML=h}
+const KIND={Security:'incidents',Tickets:'tickets',Moderation:'moderation',Roles:'roles',Channels:'channels',Tasks:'tasks',Analytics:'analytics',Settings:'settings'};
+async function live(s){const g=document.getElementById('gid').value.trim();const v=document.getElementById('v');
+if(!/^\d{5,25}$/.test(g)){v.innerHTML='<div class="card wide">Enter a numeric Guild ID above, then click the section again.</div>';return}
+const kind=KIND[s];const path=s==='Audit'?'/api/audit/'+g:'/api/'+kind+'/'+g;
+try{const r=await fetch(document.getElementById('url').value.replace(/\/$/,'')+path,{headers:{authorization:'Bearer '+document.getElementById('tok').value}});if(!r.ok)throw new Error('HTTP '+r.status);let rows=await r.json();let note='';
+if(s==='Audit'){note=' · hash chain '+(rows.chainValid?'VALID':'BROKEN');rows=rows.records.map(x=>({seq:x.seq,timestamp:x.timestamp,actorId:x.actorId,action:x.action,risk:x.risk,result:x.result}))}
+const c=rows.length?Object.keys(rows[0]).slice(0,7):[];
+v.innerHTML='<div class="card wide"><h3>'+esc(s)+' (live, '+rows.length+' rows'+esc(note)+')</h3>'+(rows.length?'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><tr>'+c.map(x=>'<th align="left">'+esc(x)+'</th>').join('')+'</tr>'+rows.slice(0,100).map(o=>'<tr>'+c.map(x=>'<td>'+esc(typeof o[x]==='object'?JSON.stringify(o[x]):(o[x]??''))+'</td>').join('')+'</tr>').join('')+'</table></div>':'Nothing recorded yet.')+'</div>'}catch(e){v.innerHTML='<div class="card wide">Failed to load: '+esc(e.message)+'</div>'}}
 document.getElementById('nav').innerHTML=S.map(s=>`<button>${s}</button>`).join('');
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.textContent));show('Overview');
+const $=id=>document.getElementById(id);
+$('go').onclick=async()=>{try{const base=$('url').value.replace(/\/$/,'');const r=await fetch(base+'/api/status',{headers:{authorization:'Bearer '+$('tok').value}});if(!r.ok)throw new Error('HTTP '+r.status);LIVE=await r.json();DEMO=false;$('badge').textContent='LIVE';$('badge').style.background='var(--ok)';$('msg').textContent='connected';show('Overview')}catch(e){$('msg').textContent='Connection failed: '+e.message}};
+$('demo').onclick=()=>{DEMO=true;LIVE=null;$('badge').textContent='DEMO MODE — sample data, no real Discord actions';$('badge').style.background='var(--w)';location.reload()};
 </script></body></html>

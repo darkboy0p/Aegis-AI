@@ -49,7 +49,7 @@ export class CapabilityBroker {
     if (tool.risk !== 'SAFE' && !(await this.gw.botHasPermission(req.guildId, tool.permission))) return done({ status: 'denied', reason: 'bot lacks permission' });
     if (req.targetId && tool.risk !== 'SAFE' && !(await this.gw.botCanActOn(req.guildId, req.targetId))) return done({ status: 'denied', reason: 'role hierarchy' });
     const idx = (r: Risk) => RISK_ORDER.indexOf(r);
-    if (req.actorType === 'ai' && policy.autonomy === 0 && tool.risk !== 'SAFE') return done({ status: 'denied', reason: 'autonomy 0: observe only' });
+    if (req.actorType !== 'user' && policy.autonomy === 0 && tool.risk !== 'SAFE') return done({ status: 'denied', reason: 'autonomy 0: observe only' });
     const autoOk = idx(tool.risk) <= idx(AUTO_RISK[policy.autonomy]) || (tool.risk === 'CRITICAL' && policy.autonomy === 5 && policy.allowAutoCritical);
     if (req.actorType !== 'user' && !autoOk && !req.confirmedBy) { auth = 'awaiting-confirmation'; return done({ status: 'needs_confirmation', reason: `${tool.risk} risk exceeds autonomy ${policy.autonomy}` }); }
     if (req.actorType === 'user' && tool.risk === 'CRITICAL' && !req.confirmedBy) { auth = 'awaiting-confirmation'; return done({ status: 'needs_confirmation', reason: 'CRITICAL requires confirmation' }); }
